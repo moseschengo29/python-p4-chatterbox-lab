@@ -14,13 +14,45 @@ migrate = Migrate(app, db)
 
 db.init_app(app)
 
-@app.route('/messages')
+@app.route('/messages', methods=['GET', 'POST'])
 def messages():
-    return ''
+    if request.method == 'GET':
+        # Retrieve all messages from the database and order them by created_at in ascending order
+        messos = Message.query.order_by(Message.created_at).all()
+        all_messages = [mess.to_dict() for mess in messos]
+        return jsonify(all_messages), 200
+
+    elif request.method == 'POST':
+        # Create a new message from request parameters
+        new_mess = Message(
+            body=request.form.get('body'),
+            username=request.form.get('username')
+        )
+        db.session.add(new_mess)
+        db.session.commit()
+        
+        return jsonify(new_mess.to_dict()), 201
 
 @app.route('/messages/<int:id>')
 def messages_by_id(id):
-    return ''
+    mess = Message.query.get(id)
+
+    if not mess:
+        return jsonify({'error': 'Message not found'}), 404
+
+    if request.method == 'PATCH':
+        # Update the message's body using params
+        new_body = request.form.get('body')
+        if new_body:
+            mess.body = new_body
+            db.session.commit()
+        return jsonify(mess.to_dict()), 200
+
+    elif request.method == 'DELETE':
+        # Delete the message from the database
+        db.session.delete(mess)
+        db.session.commit()
+        return jsonify({'message': 'Message deleted'}), 204
 
 if __name__ == '__main__':
     app.run(port=5555)
